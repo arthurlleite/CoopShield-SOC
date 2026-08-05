@@ -78,6 +78,8 @@ flowchart TB
     ACC --> ING
     ACC --> ALERT
     ACC --> INC
+    IDT --> AUD
+    ACC --> AUD
     DP --> AUD
     ALERT --> AUD
     INC --> AUD

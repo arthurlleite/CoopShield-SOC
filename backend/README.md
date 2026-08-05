@@ -30,9 +30,10 @@ backend/
 ```
 
 Cada módulo de domínio segue arquitetura hexagonal internamente
-(`domain` / `application` / `infrastructure`). Nesta fase (Fase 1), apenas
-`sharedkernel` possui lógica de domínio real (o envelope de evento normalizado); os
-demais módulos têm o esqueleto de pacotes documentado, pronto para receber a
+(`domain` / `application` / `infrastructure`). Além de `sharedkernel`, os módulos
+`identity`, `accesscontrol` e `audit` já possuem lógica real (autenticação, RBAC e
+trilha de auditoria — ver seção "Autenticação e Autorização" abaixo); os demais
+módulos ainda têm apenas o esqueleto de pacotes documentado, pronto para receber a
 implementação funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
 
 ## Pré-requisitos
@@ -52,6 +53,80 @@ A aplicação sobe em `http://localhost:8080`, com:
 - Health check: `GET /actuator/health`
 - Documentação OpenAPI: `GET /v3/api-docs`
 - Swagger UI: `GET /swagger-ui.html`
+- Autenticação: `POST /api/v1/auth/login`, `/refresh`, `/logout` (ver abaixo)
+
+## Autenticação e Autorização (Fase 2)
+
+O backend expõe autenticação por JWT de curta duração + refresh token opaco
+rotacionado a cada uso, com bloqueio temporário após tentativas repetidas e
+autorização por perfil (RBAC), conforme
+[docs/architecture/roles-permissions.md](../docs/architecture/roles-permissions.md) e
+[ADR-011](../docs/adr/ADR-011-persistencia-em-memoria-fase-2.md).
+
+### Usuários sintéticos (semeados na inicialização)
+
+Um usuário sintético por perfil é criado automaticamente ao subir a aplicação, todos
+com a mesma senha sintética `Synthetic#Pass123` (apenas para uso local/demonstrativo —
+nunca representa uma credencial real):
+
+`synthetic-soc-analyst-01`, `synthetic-soc-manager-01`, `synthetic-employee-01`,
+`synthetic-branch-manager-01`, `synthetic-it-admin-01`, `synthetic-auditor-01`.
+
+### Fluxo de exemplo (curl)
+
+```bash
+# Login
+curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"synthetic-soc-analyst-01","password":"Synthetic#Pass123"}'
+
+# Consultar a própria identidade (necessita do accessToken retornado acima)
+curl -s http://localhost:8080/api/v1/me -H "Authorization: Bearer <accessToken>"
+
+# Renovar (rotaciona o refresh token; o antigo deixa de ser valido)
+curl -s -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Content-Type: application/json" -d '{"refreshToken":"<refreshToken>"}'
+
+# Logout (revoga o refresh token)
+curl -s -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Content-Type: application/json" -d '{"refreshToken":"<refreshToken>"}'
+```
+
+### Regras de autorização por rota
+
+| Prefixo | Perfis permitidos |
+|---------|--------------------|
+| `/api/v1/auth/**`, `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` | Público |
+| `/api/v1/admin/**` | `IT_ADMIN` |
+| `/api/v1/audit/**` | `AUDITOR` |
+| `/api/v1/soc/**` | `SOC_ANALYST`, `SOC_MANAGER` |
+| qualquer outra rota | Qualquer usuário autenticado |
+
+Os prefixos `/api/v1/admin`, `/api/v1/audit` e `/api/v1/soc` ainda não têm
+controladores de negócio (chegam nas Fases 6 a 9); a regra de autorização já está em
+vigor e é validada nos testes de integração pela distinção entre 403 (bloqueado pelo
+perfil) e 404 (autorizado, mas sem endpoint ainda).
+
+### Segurança das credenciais
+
+- Falha de credenciais e conta bloqueada retornam a **mesma resposta HTTP genérica**
+  (401, `invalid_credentials`), para não permitir enumeração de usuários nem revelar
+  o estado de bloqueio a um observador externo. A distinção fica registrada apenas na
+  auditoria interna (`AUTHENTICATION_FAILURE` vs. `ACCOUNT_LOCKED`).
+- Senhas são armazenadas com BCrypt; refresh tokens são armazenados como hash SHA-256
+  do segredo (nunca em texto puro), conforme
+  [ADR-004](../docs/adr/ADR-004-tokenizacao.md).
+- Nenhuma senha, hash ou token é registrado em log.
+
+### Propriedades de configuração
+
+| Propriedade | Padrão | Descrição |
+|---|---|---|
+| `coopshield.security.jwt.secret` | chave sintética local | Chave HS256 (sobrescrever via variável de ambiente fora do uso local) |
+| `coopshield.security.jwt.access-token-ttl` | `PT15M` | Duração do access token |
+| `coopshield.security.lockout.max-failed-attempts` | `5` | Tentativas antes do bloqueio |
+| `coopshield.security.lockout.lockout-duration` | `PT15M` | Duração do bloqueio temporário |
+| `coopshield.security.lockout.refresh-token-ttl` | `P7D` | Duração do refresh token |
 
 ## Build e Testes
 
@@ -60,9 +135,10 @@ cd backend
 mvn verify
 ```
 
-Isso compila todos os 15 módulos (14 de domínio + `app`), executa os testes JUnit 5 de
-cada módulo (incluindo os testes de contexto Spring Boot e dos endpoints de
-health/OpenAPI) e empacota o artefato executável em `app/target/coopshield-soc.jar`.
+Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`), executa os
+testes JUnit 5/Mockito de cada módulo (domínio, aplicação, infraestrutura e os testes
+de integração de autenticação/RBAC no módulo `app`) e empacota o artefato executável
+em `app/target/coopshield-soc.jar`.
 
 ## Perfis
 
@@ -86,8 +162,10 @@ com usuário não privilegiado e expõe um `HEALTHCHECK` sobre `/actuator/health
 
 ## Limitações desta Fase
 
-- Sem endpoints de negócio ainda (autenticação, eventos, alertas, incidentes) — chegam
-  nas Fases 2 a 9.
-- Sem MongoDB/Kafka configurados no backend ainda — chegam nas Fases 3 e 4.
+- Sem endpoints de negócio de domínio ainda (eventos, alertas, incidentes) — chegam
+  nas Fases 4 a 9. Autenticação e RBAC já são reais desde a Fase 2 (ver acima).
+- Sem MongoDB/Kafka configurados no backend ainda — chegam nas Fases 3 e 4. Usuários,
+  refresh tokens e auditoria são mantidos em memória até lá (ver
+  [ADR-011](../docs/adr/ADR-011-persistencia-em-memoria-fase-2.md)).
 - `mvn verify` não inclui testes de integração com Testcontainers ainda (não há
   infraestrutura de dados para testar nesta fase).
