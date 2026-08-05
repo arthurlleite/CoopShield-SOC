@@ -15,4 +15,11 @@
   <name>CoopShield SOC - audit</name>
   <description>Trilha de auditoria de acoes sensiveis e privilegiadas.</description>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+    </dependency>
+  </dependencies>
+
 </project>
