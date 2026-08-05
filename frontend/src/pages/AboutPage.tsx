@@ -25,8 +25,8 @@ export function AboutPage() {
         <h2 style={{ marginTop: 0 }}>Independência e Dados Sintéticos</h2>
         <p>
           O CoopShield SOC é um projeto independente, educacional e de portfólio. Não
-          possui vínculo com Sicoob, Itaú, Comforte, TAMUNIO, bancos, cooperativas,
-          empresas de segurança ou instituições financeiras reais. Não utiliza
+          possui vínculo com bancos, cooperativas, empresas de segurança ou
+          instituições financeiras reais. Não utiliza
           logotipos, identidade visual proprietária, nomes de clientes ou
           funcionários reais, dados bancários reais ou qualquer informação
           confidencial. Todos os dados, usuários, eventos, transações e incidentes

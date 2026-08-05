@@ -109,8 +109,8 @@ para detalhes de build, testes e imagens Docker de cada parte.
 
 ## Independência e Dados Sintéticos
 
-Este projeto não possui vínculo com Sicoob, Itaú, Comforte, TAMUNIO, bancos,
-cooperativas, empresas de segurança ou instituições financeiras reais. Não utiliza
+Este projeto não possui vínculo com bancos, cooperativas, empresas de segurança ou
+instituições financeiras reais. Não utiliza
 logotipos, identidade visual proprietária, nomes de clientes ou funcionários reais,
 dados bancários reais ou qualquer informação confidencial. Todos os dados, usuários,
 eventos, transações e incidentes apresentados são sintéticos.

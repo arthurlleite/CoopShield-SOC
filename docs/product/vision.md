@@ -139,9 +139,9 @@ própria ferramenta de segurança é parte do problema, não um adicional.
 
 ## 7. Aviso de Independência e Dados Sintéticos
 
-Este projeto é independente e educacional. Não possui vínculo com Sicoob, Itaú,
-Comforte, TAMUNIO, bancos, cooperativas, empresas de segurança ou instituições
-financeiras reais. Não utiliza logotipos, identidade visual proprietária, nomes de
+Este projeto é independente e educacional. Não possui vínculo com bancos,
+cooperativas, empresas de segurança ou instituições financeiras reais. Não utiliza
+logotipos, identidade visual proprietária, nomes de
 clientes ou funcionários reais, dados bancários reais ou qualquer informação
 confidencial. Todos os dados, usuários, eventos, transações e incidentes apresentados
 neste sistema são sintéticos e claramente identificados como fictícios em toda a
