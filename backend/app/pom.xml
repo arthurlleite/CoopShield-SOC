@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.coopshield.soc</groupId>
+    <artifactId>coopshield-soc-backend</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>app</artifactId>
+  <packaging>jar</packaging>
+  <name>CoopShield SOC - Application</name>
+  <description>
+    Ponto de entrada executavel do monolito modular CoopShield SOC. Agrega
+    os modulos de dominio e expoe a API REST e os health checks.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.9.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>sharedkernel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>identity</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>accesscontrol</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>eventingestion</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>eventnormalization</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>dataprotection</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>detection</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>risk</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>alert</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>incident</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>playbook</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>audit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>observability</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.coopshield.soc</groupId>
+      <artifactId>simulation</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>coopshield-soc</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

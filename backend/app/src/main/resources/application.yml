@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: coopshield-soc
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+info:
+  app:
+    name: CoopShield SOC
+    description: >-
+      Plataforma educacional de defesa cibernetica e protecao de dados.
+      Projeto independente e educacional, sem vinculo com instituicoes
+      financeiras ou empresas reais. Todos os dados sao sinteticos.
