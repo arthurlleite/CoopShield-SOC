@@ -61,10 +61,34 @@ publicada antes do início da próxima. Estado atual:
 
 | Fase | Status |
 |------|--------|
-| Fase 0 — Arquitetura e documentação inicial | Em conclusão |
-| Fase 1 a 14 | Não iniciadas |
+| Fase 0 — Arquitetura e documentação inicial | Concluída |
+| Fase 1 — Estrutura do back-end e front-end | Em conclusão |
+| Fase 2 a 14 | Não iniciadas |
 
 Veja o [Roadmap completo](docs/roadmap.md) para o detalhamento de todas as fases.
+
+## Executar Localmente
+
+Pré-requisitos: Java 21, Maven 3.9+, Node.js 20.19+/22.12+, Docker e Docker Compose.
+
+```bash
+# Backend (API em http://localhost:8080, Swagger UI em /swagger-ui.html)
+cd backend
+mvn spring-boot:run -pl app -am -Dspring-boot.run.profiles=local
+
+# Frontend (em http://localhost:5173)
+cd frontend
+npm install
+npm run dev
+
+# Stack completa via Docker Compose (backend + frontend + MongoDB + Kafka)
+cd infrastructure
+cp .env.example .env
+docker compose up --build
+```
+
+Veja [backend/README.md](backend/README.md) e [frontend/README.md](frontend/README.md)
+para detalhes de build, testes e imagens Docker de cada parte.
 
 ## Documentação
 
