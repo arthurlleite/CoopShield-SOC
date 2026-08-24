@@ -10,8 +10,12 @@ import org.springframework.stereotype.Component;
 /**
  * Publica o evento bruto validado, serializado como JSON
  * ({@link RawEventMessage}), em {@code security.raw-events}. A chave da
- * mensagem e o {@code eventId}, garantindo que reenvios do mesmo evento
- * (ex.: retry do cliente) caiam na mesma particao.
+ * mensagem e o {@code correlationId}, nao o {@code eventId}: o topico tem
+ * multiplas particoes, e o Kafka so garante ordem DENTRO de uma particao -
+ * eventos da mesma jornada (ex.: uma execucao do laboratorio de simulacao)
+ * precisam cair sempre na mesma particao para que o motor de deteccao
+ * (Fase 6), que correlaciona eventos por ator/janela de tempo, os veja na
+ * ordem em que realmente aconteceram.
  */
 @Component
 public class KafkaRawEventPublisher implements RawEventPublisher {
@@ -28,7 +32,7 @@ public class KafkaRawEventPublisher implements RawEventPublisher {
     public void publish(RawEvent event) {
         try {
             String payload = objectMapper.writeValueAsString(RawEventMessage.from(event));
-            kafkaTemplate.send(EventTopics.RAW_EVENTS, event.eventId().toString(), payload);
+            kafkaTemplate.send(EventTopics.RAW_EVENTS, event.correlationId().toString(), payload);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize raw event " + event.eventId(), e);
         }

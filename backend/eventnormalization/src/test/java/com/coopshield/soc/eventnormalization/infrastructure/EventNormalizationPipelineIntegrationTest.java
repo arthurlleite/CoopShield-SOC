@@ -149,12 +149,15 @@ class EventNormalizationPipelineIntegrationTest {
                 Query.query(Criteria.where("_id").is(malformedEventId)), "security_events")).isFalse();
     }
 
-    private ConsumerRecord<String, String> findRecord(String topic, String key) {
+    private ConsumerRecord<String, String> findRecord(String topic, String eventId) {
+        // A chave da mensagem publicada por eventnormalization e o
+        // correlationId, nao o eventId (ver KafkaNormalizedEventPublisher) -
+        // localizar pelo conteudo, nao pela chave.
         long deadline = System.currentTimeMillis() + 30_000;
         while (System.currentTimeMillis() < deadline) {
             var records = testConsumer.poll(Duration.ofMillis(500));
             for (ConsumerRecord<String, String> record : records) {
-                if (topic.equals(record.topic()) && key.equals(record.key())) {
+                if (topic.equals(record.topic()) && record.value().contains(eventId)) {
                     return record;
                 }
             }

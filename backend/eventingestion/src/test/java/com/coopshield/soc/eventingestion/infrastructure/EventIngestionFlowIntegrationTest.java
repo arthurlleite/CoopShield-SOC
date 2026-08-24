@@ -125,12 +125,14 @@ class EventIngestionFlowIntegrationTest {
         return "http://localhost:" + port + path;
     }
 
-    private ConsumerRecord<String, String> findRecord(String key) {
+    private ConsumerRecord<String, String> findRecord(String eventId) {
+        // A chave da mensagem e o correlationId, nao o eventId (ver
+        // KafkaRawEventPublisher) - localizar pelo conteudo, nao pela chave.
         long deadline = System.currentTimeMillis() + 40_000;
         while (System.currentTimeMillis() < deadline) {
             var records = testConsumer.poll(Duration.ofMillis(500));
             for (ConsumerRecord<String, String> record : records) {
-                if (key.equals(record.key())) {
+                if (record.value().contains(eventId)) {
                     return record;
                 }
             }
