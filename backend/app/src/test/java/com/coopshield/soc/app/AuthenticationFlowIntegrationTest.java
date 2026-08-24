@@ -1,23 +1,23 @@
 package com.coopshield.soc.app;
 
+import com.coopshield.soc.identity.application.UserRepository;
+import com.coopshield.soc.identity.domain.User;
 import com.coopshield.soc.identity.infrastructure.web.TokenResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("local")
-class AuthenticationFlowIntegrationTest {
+class AuthenticationFlowIntegrationTest extends AbstractIntegrationTest {
 
     private static final String SYNTHETIC_PASSWORD = "Synthetic#Pass123";
 
@@ -26,6 +26,9 @@ class AuthenticationFlowIntegrationTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private String url(String path) {
         return "http://localhost:" + port + path;
@@ -64,27 +67,40 @@ class AuthenticationFlowIntegrationTest {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
     void accountLocksAfterRepeatedFailuresAndStaysLockedEvenWithCorrectPassword() {
         String username = "synthetic-branch-manager-01";
 
-        for (int i = 0; i < 5; i++) {
-            ResponseEntity<Map> failed = restTemplate.postForEntity(
+        try {
+            for (int i = 0; i < 5; i++) {
+                ResponseEntity<Map> failed = restTemplate.postForEntity(
+                        url("/api/v1/auth/login"),
+                        Map.of("username", username, "password", "wrong-password"),
+                        Map.class);
+                assertThat(failed.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            }
+
+            ResponseEntity<Map> lockedButCorrectPassword = restTemplate.postForEntity(
                     url("/api/v1/auth/login"),
-                    Map.of("username", username, "password", "wrong-password"),
+                    Map.of("username", username, "password", SYNTHETIC_PASSWORD),
                     Map.class);
-            assertThat(failed.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+            // Mesma resposta generica de credenciais invalidas - o bloqueio nao e
+            // revelado externamente, apenas via auditoria interna.
+            assertThat(lockedButCorrectPassword.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(lockedButCorrectPassword.getBody()).containsEntry("error", "invalid_credentials");
+        } finally {
+            // O MongoDB deste teste e real e compartilhado entre as classes de
+            // teste da mesma JVM (Testcontainers); sem este reset, o bloqueio
+            // vazaria para outros testes que tambem usam este mesmo usuario
+            // sintetico (ex.: RoleBasedAccessIntegrationTest).
+            unlockUser(username);
         }
+    }
 
-        ResponseEntity<Map> lockedButCorrectPassword = restTemplate.postForEntity(
-                url("/api/v1/auth/login"),
-                Map.of("username", username, "password", SYNTHETIC_PASSWORD),
-                Map.class);
-
-        // Mesma resposta generica de credenciais invalidas - o bloqueio nao e
-        // revelado externamente, apenas via auditoria interna.
-        assertThat(lockedButCorrectPassword.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(lockedButCorrectPassword.getBody()).containsEntry("error", "invalid_credentials");
+    private void unlockUser(String username) {
+        User locked = userRepository.findByUsername(username).orElseThrow();
+        User unlocked = new User(locked.userId(), locked.username(), locked.passwordHash(), locked.role(), locked.enabled());
+        userRepository.save(unlocked);
     }
 
     @Test
@@ -129,13 +145,10 @@ class AuthenticationFlowIntegrationTest {
     void meEndpointReturnsAuthenticatedIdentityWithValidToken() {
         TokenResponse tokens = login("synthetic-soc-manager-01", SYNTHETIC_PASSWORD).getBody();
 
-        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokens.accessToken());
         ResponseEntity<Map> response = restTemplate.exchange(
-                url("/api/v1/me"),
-                org.springframework.http.HttpMethod.GET,
-                new org.springframework.http.HttpEntity<>(headers),
-                Map.class);
+                url("/api/v1/me"), HttpMethod.GET, new HttpEntity<>(headers), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("username", "synthetic-soc-manager-01");
