@@ -127,7 +127,7 @@ public enum Scenario implements ScenarioDefinition {
             for (int i = 0; i < eventCount; i++) {
                 events.add(new GeneratedEvent("api.response.error", "REQUEST", "FAILURE", "api-endpoint",
                         SyntheticData.randomResourceId("endpoint"), device, true, SyntheticData.randomSyntheticIp(),
-                        "synthetic-region", Map.of("httpStatus", i % 2 == 0 ? "401" : "500")));
+                        "synthetic-region", Map.of("httpStatus", i % 2 == 0 ? "401" : "403")));
             }
             return events;
         }
