@@ -26,6 +26,17 @@ public class RefreshToken {
         this.revoked = false;
     }
 
+    /**
+     * Reconstroi um refresh token a partir de estado ja persistido
+     * (incluindo revogacao), usado exclusivamente pelos adaptadores de
+     * persistencia ao materializar um documento existente.
+     */
+    public static RefreshToken rehydrate(UUID tokenId, UUID userId, String secretHash, Instant expiresAt, boolean revoked) {
+        RefreshToken token = new RefreshToken(tokenId, userId, secretHash, expiresAt);
+        token.revoked = revoked;
+        return token;
+    }
+
     public boolean isValidAt(Instant now, String candidateSecretHash) {
         return !revoked && expiresAt.isAfter(now) && secretHash.equals(candidateSecretHash);
     }
@@ -40,6 +51,16 @@ public class RefreshToken {
 
     public UUID userId() {
         return userId;
+    }
+
+    /**
+     * Hash (nao reversivel) do segredo do refresh token. Seguro de expor a
+     * adaptadores de persistencia: por si so nao permite reconstruir um
+     * token utilizavel, ao contrario do segredo bruto (que nunca e mantido
+     * aqui).
+     */
+    public String secretHash() {
+        return secretHash;
     }
 
     public Instant expiresAt() {

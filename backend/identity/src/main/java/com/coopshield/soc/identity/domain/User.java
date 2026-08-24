@@ -39,6 +39,20 @@ public class User {
         return value;
     }
 
+    /**
+     * Reconstroi um usuario a partir de estado ja persistido (incluindo
+     * contagem de tentativas falhas e bloqueio), usado exclusivamente pelos
+     * adaptadores de persistencia ao materializar um documento existente.
+     * Nao deve ser usado para criar um usuario novo - use o construtor.
+     */
+    public static User rehydrate(UUID userId, String username, String passwordHash, Role role,
+                                  boolean enabled, int failedLoginAttempts, Instant lockedUntil) {
+        User user = new User(userId, username, passwordHash, role, enabled);
+        user.failedLoginAttempts = failedLoginAttempts;
+        user.lockedUntil = lockedUntil;
+        return user;
+    }
+
     public boolean isLockedAt(Instant now) {
         return lockedUntil != null && lockedUntil.isAfter(now);
     }
