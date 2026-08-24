@@ -31,13 +31,14 @@ backend/
 
 Cada módulo de domínio segue arquitetura hexagonal internamente
 (`domain` / `application` / `infrastructure`). Além de `sharedkernel`, os módulos
-`identity`, `accesscontrol`, `audit`, `eventingestion`, `eventnormalization` e
-`simulation` já possuem lógica real (autenticação, RBAC, persistência em MongoDB,
-trilha de auditoria, o pipeline de ingestão/normalização de eventos e o laboratório de
-simulação — ver seções "Autenticação e Autorização", "Persistência", "Ingestão e
-Normalização de Eventos" e "Laboratório de Simulação" abaixo); os demais módulos ainda
-têm apenas o esqueleto de pacotes documentado, pronto para receber a implementação
-funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
+`identity`, `accesscontrol`, `audit`, `eventingestion`, `eventnormalization`,
+`simulation` e `detection` já possuem lógica real (autenticação, RBAC, persistência em
+MongoDB, trilha de auditoria, o pipeline de ingestão/normalização de eventos, o
+laboratório de simulação e o motor de detecção — ver seções "Autenticação e
+Autorização", "Persistência", "Ingestão e Normalização de Eventos", "Laboratório de
+Simulação" e "Motor de Detecção" abaixo); os demais módulos ainda têm apenas o
+esqueleto de pacotes documentado, pronto para receber a implementação funcional das
+fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
 
 ## Pré-requisitos
 
@@ -247,6 +248,36 @@ A seleção visual de personagem/cenário, velocidade e modo passo a passo chega
 Laboratory do frontend (Fase 10); esta fase entrega a capacidade de geração em lote no
 backend.
 
+## Motor de Detecção (Fase 6)
+
+`detection` consome `security.normalized-events`, avalia cada evento contra as 15
+regras iniciais (carregadas de YAML em `src/main/resources/detection-rules/`, ver
+[docs/detection-rules/catalog.md](../docs/detection-rules/catalog.md) e
+[ADR-014](../docs/adr/ADR-014-motor-de-deteccao.md)) e, quando uma regra é acionada,
+persiste a correspondência explicável em `detection_matches` e publica em
+`security.detection-alerts`. Sete tipos de avaliador (contagem por limite, falhas
+seguidas de sucesso, sinalização de evento único, horário atípico, viagem impossível,
+múltiplas contas no mesmo dispositivo, sequência de dois tipos de evento) cobrem as 15
+regras; um histórico deslizante em memória, por ator e por dispositivo, alimenta as
+regras que dependem de agregação.
+
+`riskScore` de cada correspondência usa `baseRiskScore` da regra como valor
+**provisório** até o motor de risco (Fase 7) calcular a pontuação final explicável.
+
+### Fluxo de exemplo (curl)
+
+```bash
+curl -s http://localhost:8080/api/v1/detection/rules -H "Authorization: Bearer <accessToken>"
+curl -s http://localhost:8080/api/v1/detection/matches -H "Authorization: Bearer <accessToken>"
+curl -s "http://localhost:8080/api/v1/detection/matches?correlationId=<correlationId>" \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+Executar o cenário `account-compromised` do laboratório de simulação (ver seção acima)
+aciona RULE-001 (múltiplas falhas seguidas de sucesso) e RULE-003 (dispositivo
+desconhecido) de ponta a ponta — validado em
+`DetectionEndToEndIntegrationTest` (módulo `app`).
+
 ## Build e Testes
 
 ```bash
@@ -257,11 +288,12 @@ mvn verify
 Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`) e executa os
 testes JUnit 5/Mockito/AssertJ de cada módulo: domínio, aplicação, infraestrutura, os
 testes de persistência MongoDB via Testcontainers (`identity`, `audit`,
-`eventnormalization`, `simulation`), os testes do pipeline de eventos via Kafka+MongoDB
-reais (`eventingestion`, `eventnormalization`, `simulation`) e os testes de integração
-de autenticação/RBAC/ingestão/simulação no módulo `app` (também via Testcontainers, ver
-`AbstractIntegrationTest`). **Docker precisa estar em execução** para os testes de
-Testcontainers; sem Docker disponível, use `mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest,!*IntegrationTest' -DfailIfNoTests=false -pl '!app'`
+`eventnormalization`, `simulation`, `detection`), os testes do pipeline de eventos via
+Kafka+MongoDB reais (`eventingestion`, `eventnormalization`, `simulation`, `detection`)
+e os testes de integração de autenticação/RBAC/ingestão/simulação/detecção no módulo
+`app` (também via Testcontainers, ver `AbstractIntegrationTest`). **Docker precisa
+estar em execução** para os testes de Testcontainers; sem Docker disponível, use
+`mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest,!*IntegrationTest' -DfailIfNoTests=false -pl '!app'`
 para rodar apenas os testes que não dependem de MongoDB/Kafka reais.
 
 O build empacota o artefato executável em `app/target/coopshield-soc.jar`.
@@ -285,13 +317,20 @@ com usuário não privilegiado e expõe um `HEALTHCHECK` sobre `/actuator/health
 
 ## Limitações desta Fase
 
-- Sem detecção, risco, alertas, incidentes, playbooks ou proteção de dados completa
-  ainda — chegam nas Fases 6 a 9. Autenticação/RBAC (Fase 2), persistência MongoDB
-  (Fase 3), o pipeline de ingestão/normalização de eventos via Kafka (Fase 4) e o
-  laboratório de simulação (Fase 5) já são reais (ver acima).
+- Sem risco, alertas, incidentes, playbooks ou proteção de dados completa ainda —
+  chegam nas Fases 7 a 9. Autenticação/RBAC (Fase 2), persistência MongoDB (Fase 3), o
+  pipeline de ingestão/normalização de eventos via Kafka (Fase 4), o laboratório de
+  simulação (Fase 5) e o motor de detecção (Fase 6) já são reais (ver acima).
 - O laboratório publica em lote, de forma síncrona; controle visual de velocidade e
   execução passo a passo são responsabilidade do Laboratory do frontend (Fase 10),
   construído sobre esta capacidade de backend.
+- `riskScore` de uma correspondência de regra é o `baseRiskScore` da própria regra, não
+  um cálculo combinando severidade/dispositivo/volume/reincidência — isso é
+  responsabilidade do motor de risco (Fase 7) — ver
+  [ADR-014](../docs/adr/ADR-014-motor-de-deteccao.md).
+- O histórico de agregação do motor de detecção é em memória, de uma única instância do
+  backend — perdido a reinício do processo, não distribuído entre réplicas (aceitável
+  para o MVP de instância única, ver ADR-014).
 - `dataClassification` dos eventos normalizados é um valor provisório (`INTERNAL`) até
   o módulo `dataprotection` (Fase 9) assumir essa responsabilidade de verdade — ver
   [ADR-013](../docs/adr/ADR-013-pipeline-ingestao-normalizacao.md).

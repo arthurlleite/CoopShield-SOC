@@ -85,7 +85,7 @@ Regras do envelope:
 | `security.normalized-events` | Eventos normalizados, prontos para detecção | Real desde a Fase 4 |
 | `security.dead-letter` | Eventos que falharam validação/processamento após as tentativas de retry | Real desde a Fase 4 |
 | `security.data-policy-violations` | Violações de política de dados (ex.: dado sensível em texto puro) | Criado na Fase 9 (`dataprotection`) |
-| `security.detection-alerts` | Alertas criados pelo motor de detecção/risco | Criado na Fase 8 (`alert`) |
+| `security.detection-alerts` | Correspondências de regra (Fase 6) e, futuramente, pontuação de risco (Fase 7) | Real desde a Fase 6 (`detection`) |
 | `security.incidents` | Eventos de ciclo de vida de incidentes | Criado na Fase 8 (`incident`) |
 | `security.audit-events` | Eventos de auditoria (ações privilegiadas, destokenização) | Sem fase associada ainda; `audit` persiste em MongoDB desde a Fase 3 (ver [ADR-012](../adr/ADR-012-mongodb-real-fase-3.md)) |
 

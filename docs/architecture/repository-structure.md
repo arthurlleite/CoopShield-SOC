@@ -4,9 +4,18 @@
 
 A estrutura abaixo é a estrutura alvo do repositório ao final das 15 fases (0 a 14).
 Nesta Fase 0, apenas os diretórios de documentação e os arquivos de governança do
-repositório existem; os demais diretórios (`backend/`, `frontend/`, `simulator/`,
-`detection-rules/`, `infrastructure/`, `load-tests/`, `.github/workflows/`) serão
-criados nas fases correspondentes, conforme o [Roadmap](../roadmap.md).
+repositório existem; os demais diretórios (`backend/`, `frontend/`, `infrastructure/`,
+`load-tests/`, `.github/workflows/`) serão criados nas fases correspondentes, conforme
+o [Roadmap](../roadmap.md).
+
+> **Atualização (Fases 5-6):** o simulador e as regras de detecção, originalmente
+> desenhados aqui como diretórios de topo (`simulator/`, `detection-rules/`), foram
+> implementados como o módulo `backend/simulation` e como recursos de
+> `backend/detection/src/main/resources/detection-rules/`, respectivamente — mantendo
+> a arquitetura de monólito modular já decidida em [ADR-001](../adr/ADR-001-monolito-modular.md)
+> e, no caso das regras, garantindo que os arquivos YAML estejam dentro do contexto de
+> build da imagem Docker do backend (ver [ADR-014](../adr/ADR-014-motor-de-deteccao.md)).
+> Ambos continuam "versionados no repositório"; apenas o caminho mudou.
 
 ```
 coopshield-soc/
@@ -21,16 +30,6 @@ coopshield-soc/
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── README.md
-├── simulator/                   (Fase 5+)
-│   ├── scenarios/
-│   ├── synthetic-data/
-│   └── README.md
-├── detection-rules/             (Fase 6+)
-│   ├── authentication/
-│   ├── authorization/
-│   ├── data-access/
-│   ├── administration/
-│   └── api/
 ├── infrastructure/               (Fase 1+ / Fase 11+)
 │   ├── docker-compose.yml
 │   ├── prometheus/

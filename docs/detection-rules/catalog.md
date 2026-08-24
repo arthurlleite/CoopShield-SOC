@@ -5,8 +5,13 @@
 
 ## 1. Estrutura de uma Regra (YAML)
 
-Cada regra de detecção, carregada da pasta `detection-rules/`, segue o schema
-conceitual abaixo (implementação completa na Fase 6):
+**Implementadas na Fase 6.** As 15 regras vivem em
+`backend/detection/src/main/resources/detection-rules/{categoria}/RULE-0NN.yaml` (não
+em uma pasta de nível superior do repositório — ver
+[ADR-014](../adr/ADR-014-motor-de-deteccao.md) sobre por que, dado que o build Docker do
+backend só inclui `backend/`). O schema abaixo corresponde exatamente ao YAML real de
+RULE-001, com o acréscimo de `evaluatorType` (seleciona qual avaliador do motor
+interpreta `conditions` — ver ADR-014 para a lista dos sete tipos):
 
 ```yaml
 id: RULE-001
@@ -18,13 +23,14 @@ enabled: true
 eventTypes:
   - authentication.login.failure
   - authentication.login.success
+evaluatorType: failure-then-success
 conditions:
-  failureCount: ">=4"
-  followedBySuccess: true
+  failureEventType: authentication.login.failure
+  successEventType: authentication.login.success
 aggregationWindow: "PT10M"
 threshold: 4
 severity: HIGH
-baseRiskScore: 30
+baseRiskScore: 60
 mitreTactic: "Credential Access"
 mitreTechnique: "T1110 - Brute Force"
 recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
@@ -35,8 +41,8 @@ falsePositiveNotes: >
 references:
   - "https://attack.mitre.org/techniques/T1110/"
 author: "CoopShield SOC"
-createdAt: "2026-08-05"
-updatedAt: "2026-08-05"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"
 ```
 
 ## 2. Regras Iniciais (catálogo conceitual)
@@ -61,7 +67,8 @@ updatedAt: "2026-08-05"
 
 ## 3. Categorias e Organização de Arquivos
 
-As regras serão organizadas por categoria em `detection-rules/`:
+As regras estão organizadas por categoria em
+`backend/detection/src/main/resources/detection-rules/`:
 
 ```
 detection-rules/
@@ -74,17 +81,20 @@ detection-rules/
 
 ## 4. Explicabilidade Obrigatória
 
-Cada alerta gerado por uma regra deve expor, no mínimo:
+Cada correspondência (`DetectionMatch`) gerada por uma regra expõe, no mínimo:
 
-1. qual regra foi acionada (`ruleId`, `name`);
+1. qual regra foi acionada (`ruleId`, `ruleName`);
 2. quais eventos contribuíram (`evidenceEventIds`);
-3. qual limite foi ultrapassado (`threshold` vs. valor observado);
-4. qual pontuação de risco foi calculada e por quê (`riskScore`, `riskFactors`);
+3. qual limite foi ultrapassado (`threshold` vs. `observedValue`);
+4. qual pontuação de risco (provisória, igual a `baseRiskScore` até o motor de risco da
+   Fase 7 calcular o valor final explicável) e a severidade (`riskScore`, `severity`);
 5. qual técnica MITRE ATT&CK foi relacionada (`mitreTactic`, `mitreTechnique`);
 6. qual playbook foi recomendado (`recommendedPlaybook`).
 
-A implementação, os testes por regra e o motor de avaliação pertencem à Fase 6
-(Motor de Detecção); este documento define apenas o catálogo e o contrato inicial.
+A implementação, os testes por regra (`DetectionEngineTest`, um caso positivo e,
+quando aplicável, um negativo por regra) e o motor de avaliação (sete tipos de
+avaliador, ver [ADR-014](../adr/ADR-014-motor-de-deteccao.md)) foram concluídos na
+Fase 6.
 
 ## Documentos Relacionados
 

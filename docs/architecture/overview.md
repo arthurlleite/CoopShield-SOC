@@ -138,7 +138,7 @@ sequenceDiagram
 | `eventingestion` | Recepção e validação inicial de eventos brutos (API/Kafka) — real desde a Fase 4 |
 | `eventnormalization` | Normalização de eventos para o modelo comum — real desde a Fase 4 |
 | `dataprotection` | Classificação, tokenização, mascaramento e controle de destokenização |
-| `detection` | Carregamento de regras YAML e avaliação contra eventos normalizados |
+| `detection` | Carregamento de regras YAML e avaliação contra eventos normalizados — real desde a Fase 6 |
 | `risk` | Cálculo de pontuação de risco explicável |
 | `alert` | Ciclo de vida de alertas |
 | `incident` | Ciclo de vida de incidentes, evidências, linha do tempo |
