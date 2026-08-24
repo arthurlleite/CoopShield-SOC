@@ -66,7 +66,8 @@ publicada antes do início da próxima. Estado atual:
 | Fase 2 — Autenticação e autorização | Concluída |
 | Fase 3 — MongoDB e modelos de domínio | Concluída |
 | Fase 4 — Kafka e ingestão de eventos | Concluída |
-| Fase 5 a 14 | Não iniciadas |
+| Fase 5 — Simulador e dados sintéticos | Concluída |
+| Fase 6 a 14 | Não iniciadas |
 
 Veja o [Roadmap completo](docs/roadmap.md) para o detalhamento de todas as fases.
 

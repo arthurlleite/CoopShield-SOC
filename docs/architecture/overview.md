@@ -145,7 +145,7 @@ sequenceDiagram
 | `playbook` | Catálogo de playbooks defensivos simulados e execução de ações simuladas |
 | `audit` | Trilha de auditoria de ações sensíveis e privilegiadas |
 | `observability` | Métricas, health checks, correlação de logs |
-| `simulation` | Geração de personagens, cenários e eventos sintéticos |
+| `simulation` | Geração de personagens, cenários e eventos sintéticos — real desde a Fase 5 |
 | `sharedkernel` | Tipos, contratos e utilitários comuns entre módulos |
 
 ## 6. Limites de Domínio

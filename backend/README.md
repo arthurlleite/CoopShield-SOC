@@ -31,12 +31,13 @@ backend/
 
 Cada módulo de domínio segue arquitetura hexagonal internamente
 (`domain` / `application` / `infrastructure`). Além de `sharedkernel`, os módulos
-`identity`, `accesscontrol`, `audit`, `eventingestion` e `eventnormalization` já
-possuem lógica real (autenticação, RBAC, persistência em MongoDB, trilha de auditoria
-e o pipeline de ingestão/normalização de eventos — ver seções "Autenticação e
-Autorização", "Persistência" e "Ingestão e Normalização de Eventos" abaixo); os demais
-módulos ainda têm apenas o esqueleto de pacotes documentado, pronto para receber a
-implementação funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
+`identity`, `accesscontrol`, `audit`, `eventingestion`, `eventnormalization` e
+`simulation` já possuem lógica real (autenticação, RBAC, persistência em MongoDB,
+trilha de auditoria, o pipeline de ingestão/normalização de eventos e o laboratório de
+simulação — ver seções "Autenticação e Autorização", "Persistência", "Ingestão e
+Normalização de Eventos" e "Laboratório de Simulação" abaixo); os demais módulos ainda
+têm apenas o esqueleto de pacotes documentado, pronto para receber a implementação
+funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
 
 ## Pré-requisitos
 
@@ -164,11 +165,11 @@ casos de uso (ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)):
 | `refresh_tokens` | `identity` | `userId`; `expiresAt` (TTL — expurgo automático de tokens expirados) |
 | `audit_logs` | `audit` | `eventType`, `actor`, `timestamp` (sem TTL — retenção indefinida no MVP) |
 
-As demais coleções previstas no produto completo (`security_events`, `alerts`,
-`incidents`, `detection_rules`, `playbooks`, `protected_data`, `user_baselines`,
-`devices`, `simulation_runs`) serão criadas nas fases em que seus módulos de domínio
-forem implementados (ver tabela de fases em ADR-012), reaplicando o mesmo padrão de
-adaptador.
+As demais coleções previstas no produto completo (`alerts`, `incidents`,
+`detection_rules`, `playbooks`, `protected_data`, `user_baselines`, `devices`) serão
+criadas nas fases em que seus módulos de domínio forem implementados (ver tabela de
+fases em ADR-012), reaplicando o mesmo padrão de adaptador. `security_events`
+(Fase 4) e `simulation_runs` (Fase 5) já existem — ver seções abaixo.
 
 ## Ingestão e Normalização de Eventos (Fase 4)
 
@@ -207,6 +208,45 @@ curl -s -X POST http://localhost:8080/api/v1/events \
 são gerados quando ausentes. Campos obrigatórios ausentes retornam `400 Bad Request`
 com a lista de violações.
 
+## Laboratório de Simulação (Fase 5)
+
+O módulo `simulation` gera tráfego sintético realista para os outros módulos:
+seis personagens fixos (um por perfil, ver
+[docs/product/personas-use-cases.md](../docs/product/personas-use-cases.md)) e doze
+cenários (`normal`, `account-compromised`, `privilege-abuse`, `mass-query`,
+`atypical-export`, `pii-exposed`, `admin-change`, `api-anomaly`, `atypical-auth`,
+`unknown-device`, `failures-then-success`, `unauthorized-endpoint`). Uma execução
+publica os eventos gerados através do **mesmo** `EventIngestionService` usado por
+`POST /api/v1/events` — não existe um caminho separado ou mais permissivo para eventos
+sintéticos — e todos os eventos de uma execução compartilham um `correlationId`,
+permitindo reconstruir a jornada completa em `security_events` depois da normalização.
+Cada execução é registrada na coleção `simulation_runs` (reservada para esta fase em
+[ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)).
+
+### Fluxo de exemplo (curl)
+
+```bash
+# Listar personagens e cenários disponiveis
+curl -s http://localhost:8080/api/v1/simulation/characters -H "Authorization: Bearer <accessToken>"
+curl -s http://localhost:8080/api/v1/simulation/scenarios -H "Authorization: Bearer <accessToken>"
+
+# Executar o cenario de referencia da Fase 0 ("conta possivelmente comprometida")
+curl -s -X POST http://localhost:8080/api/v1/simulation/runs \
+  -H "Content-Type: application/json" -H "Authorization: Bearer <accessToken>" \
+  -d '{"scenarioId":"account-compromised","characterId":"roberto-nogueira","eventCount":6}'
+# => 202 Accepted, corpo: {"runId":"...","correlationId":"...","status":"COMPLETED",...}
+
+# Consultar uma execucao pelo id
+curl -s http://localhost:8080/api/v1/simulation/runs/<runId> -H "Authorization: Bearer <accessToken>"
+```
+
+`eventCount` é opcional (usa o padrão do cenário quando ausente) e aceito entre 1 e 100.
+Qualquer usuário autenticado pode executar o laboratório, em qualquer perfil (ver
+[docs/architecture/roles-permissions.md](../docs/architecture/roles-permissions.md)).
+A seleção visual de personagem/cenário, velocidade e modo passo a passo chegam com o
+Laboratory do frontend (Fase 10); esta fase entrega a capacidade de geração em lote no
+backend.
+
 ## Build e Testes
 
 ```bash
@@ -217,9 +257,9 @@ mvn verify
 Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`) e executa os
 testes JUnit 5/Mockito/AssertJ de cada módulo: domínio, aplicação, infraestrutura, os
 testes de persistência MongoDB via Testcontainers (`identity`, `audit`,
-`eventnormalization`), os testes do pipeline de eventos via Kafka+MongoDB reais
-(`eventingestion`, `eventnormalization`) e os testes de integração de
-autenticação/RBAC/ingestão no módulo `app` (também via Testcontainers, ver
+`eventnormalization`, `simulation`), os testes do pipeline de eventos via Kafka+MongoDB
+reais (`eventingestion`, `eventnormalization`, `simulation`) e os testes de integração
+de autenticação/RBAC/ingestão/simulação no módulo `app` (também via Testcontainers, ver
 `AbstractIntegrationTest`). **Docker precisa estar em execução** para os testes de
 Testcontainers; sem Docker disponível, use `mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest,!*IntegrationTest' -DfailIfNoTests=false -pl '!app'`
 para rodar apenas os testes que não dependem de MongoDB/Kafka reais.
@@ -245,10 +285,13 @@ com usuário não privilegiado e expõe um `HEALTHCHECK` sobre `/actuator/health
 
 ## Limitações desta Fase
 
-- Sem detecção, risco, alertas, incidentes, playbooks, proteção de dados completa ou
-  simulador ainda — chegam nas Fases 5 a 9. Autenticação/RBAC (Fase 2), persistência
-  MongoDB (Fase 3) e o pipeline de ingestão/normalização de eventos via Kafka (Fase 4)
-  já são reais (ver acima).
+- Sem detecção, risco, alertas, incidentes, playbooks ou proteção de dados completa
+  ainda — chegam nas Fases 6 a 9. Autenticação/RBAC (Fase 2), persistência MongoDB
+  (Fase 3), o pipeline de ingestão/normalização de eventos via Kafka (Fase 4) e o
+  laboratório de simulação (Fase 5) já são reais (ver acima).
+- O laboratório publica em lote, de forma síncrona; controle visual de velocidade e
+  execução passo a passo são responsabilidade do Laboratory do frontend (Fase 10),
+  construído sobre esta capacidade de backend.
 - `dataClassification` dos eventos normalizados é um valor provisório (`INTERNAL`) até
   o módulo `dataprotection` (Fase 9) assumir essa responsabilidade de verdade — ver
   [ADR-013](../docs/adr/ADR-013-pipeline-ingestao-normalizacao.md).
