@@ -65,7 +65,8 @@ publicada antes do início da próxima. Estado atual:
 | Fase 1 — Estrutura do back-end e front-end | Concluída |
 | Fase 2 — Autenticação e autorização | Concluída |
 | Fase 3 — MongoDB e modelos de domínio | Concluída |
-| Fase 4 a 14 | Não iniciadas |
+| Fase 4 — Kafka e ingestão de eventos | Concluída |
+| Fase 5 a 14 | Não iniciadas |
 
 Veja o [Roadmap completo](docs/roadmap.md) para o detalhamento de todas as fases.
 

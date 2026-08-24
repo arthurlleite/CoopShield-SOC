@@ -45,9 +45,15 @@ Regras do envelope:
   geram um novo evento com `eventVersion` incrementada e referência ao anterior.
 - `correlationId` conecta eventos relacionados na mesma jornada (ex.: uma sessão).
 - `dataClassification` indica se o evento contém (ou fazia referência a) dado
-  classificado como sensível antes da tokenização.
+  classificado como sensível antes da tokenização. **Implementação atual (Fase 4):**
+  até o módulo `dataprotection` existir (Fase 9), todo evento normalizado recebe
+  `INTERNAL` como valor provisório e documentado — ver
+  [ADR-013](../adr/ADR-013-pipeline-ingestao-normalizacao.md).
 - Campos sensíveis nunca aparecem em texto puro neste envelope — são referenciados por
-  token (ver [Fase 9 — Proteção de Dados](../roadmap.md)).
+  token (ver [Fase 9 — Proteção de Dados](../roadmap.md)). O endereço IP de origem é um
+  primeiro exemplo disso já em vigor desde a Fase 4: chega à ingestão em texto puro e é
+  irreversivelmente transformado em `networkContext.ipHash` (SHA-256) pela
+  normalização, antes de qualquer persistência ou publicação.
 
 ## 2. Tipos de Evento Iniciais
 
@@ -73,15 +79,18 @@ Regras do envelope:
 
 ## 3. Tópicos Kafka
 
-| Tópico | Propósito |
-|--------|-----------|
-| `security.raw-events` | Eventos brutos recebidos, antes de validação/normalização |
-| `security.normalized-events` | Eventos normalizados e tokenizados, prontos para detecção |
-| `security.data-policy-violations` | Violações de política de dados (ex.: dado sensível em texto puro) |
-| `security.detection-alerts` | Alertas criados pelo motor de detecção/risco |
-| `security.incidents` | Eventos de ciclo de vida de incidentes |
-| `security.audit-events` | Eventos de auditoria (ações privilegiadas, destokenização) |
-| `security.dead-letter` | Eventos que falharam validação/processamento após as tentativas de retry |
+| Tópico | Propósito | Status |
+|--------|-----------|--------|
+| `security.raw-events` | Eventos brutos recebidos, antes de validação/normalização | Real desde a Fase 4 |
+| `security.normalized-events` | Eventos normalizados, prontos para detecção | Real desde a Fase 4 |
+| `security.dead-letter` | Eventos que falharam validação/processamento após as tentativas de retry | Real desde a Fase 4 |
+| `security.data-policy-violations` | Violações de política de dados (ex.: dado sensível em texto puro) | Criado na Fase 9 (`dataprotection`) |
+| `security.detection-alerts` | Alertas criados pelo motor de detecção/risco | Criado na Fase 8 (`alert`) |
+| `security.incidents` | Eventos de ciclo de vida de incidentes | Criado na Fase 8 (`incident`) |
+| `security.audit-events` | Eventos de auditoria (ações privilegiadas, destokenização) | Sem fase associada ainda; `audit` persiste em MongoDB desde a Fase 3 (ver [ADR-012](../adr/ADR-012-mongodb-real-fase-3.md)) |
+
+Ver [ADR-013](../adr/ADR-013-pipeline-ingestao-normalizacao.md) para a justificativa de
+criar apenas os tópicos com produtor/consumidor real em cada fase.
 
 ## 4. Garantias de Processamento
 
@@ -93,6 +102,19 @@ Regras do envelope:
   sem quebrar consumidores existentes.
 - **Rastreabilidade:** todo evento carrega `correlationId`, permitindo reconstruir a
   jornada completa (ingestão → normalização → detecção → alerta → incidente).
+
+## 5. Ingestão (Fase 4)
+
+`POST /api/v1/events` (autenticado) recebe um evento bruto, valida os campos
+obrigatórios (`eventType`, `source`, `actorUserId`, `actorRole`, `targetResourceType`,
+`targetResourceId`, `action`, `outcome`, `deviceId`, `sourceIp`), aplica valores padrão
+aos campos opcionais ausentes (`eventId`, `eventVersion`, `timestamp`,
+`correlationId`) e publica em `security.raw-events`. Retorna `202 Accepted` com
+`eventId`/`correlationId`, ou `400 Bad Request` com a lista de violações. Ver
+[backend/README.md](../../backend/README.md) para exemplos de requisição e
+[ADR-013](../adr/ADR-013-pipeline-ingestao-normalizacao.md) para o desenho completo do
+pipeline (por que ingestão e normalização não compartilham tipos Java, hashing de IP,
+idempotência, dead-letter).
 
 ## Documentos Relacionados
 

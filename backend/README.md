@@ -31,37 +31,40 @@ backend/
 
 Cada módulo de domínio segue arquitetura hexagonal internamente
 (`domain` / `application` / `infrastructure`). Além de `sharedkernel`, os módulos
-`identity`, `accesscontrol` e `audit` já possuem lógica real (autenticação, RBAC,
-persistência em MongoDB e trilha de auditoria — ver seções "Autenticação e Autorização"
-e "Persistência" abaixo); os demais módulos ainda têm apenas o esqueleto de pacotes
-documentado, pronto para receber a implementação funcional das fases seguintes (ver
-[docs/roadmap.md](../docs/roadmap.md)).
+`identity`, `accesscontrol`, `audit`, `eventingestion` e `eventnormalization` já
+possuem lógica real (autenticação, RBAC, persistência em MongoDB, trilha de auditoria
+e o pipeline de ingestão/normalização de eventos — ver seções "Autenticação e
+Autorização", "Persistência" e "Ingestão e Normalização de Eventos" abaixo); os demais
+módulos ainda têm apenas o esqueleto de pacotes documentado, pronto para receber a
+implementação funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
 
 ## Pré-requisitos
 
 - Java 21 (testado com Eclipse Temurin 21.0.12).
 - Maven 3.9+ (ou utilize o wrapper, quando disponível).
-- Docker (necessário para o MongoDB local via Docker Compose e para os testes de
-  integração com Testcontainers — ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)).
+- Docker (necessário para o MongoDB/Kafka locais via Docker Compose e para os testes de
+  integração com Testcontainers — ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)
+  e [ADR-013](../docs/adr/ADR-013-pipeline-ingestao-normalizacao.md)).
 
 ## Executar Localmente
 
-O backend precisa de um MongoDB acessível para subir (o seeder de usuários sintéticos
-grava no banco na inicialização). Suba apenas o MongoDB do Docker Compose antes do
-backend:
+O backend precisa de um MongoDB e um Kafka acessíveis para subir (o seeder de usuários
+sintéticos grava no banco na inicialização, e o pipeline de eventos depende de Kafka
+estar no ar). Suba MongoDB e Kafka do Docker Compose antes do backend:
 
 ```bash
 cd infrastructure
 cp .env.example .env   # apenas na primeira vez
-docker compose up -d mongodb
+docker compose up -d mongodb kafka
 
 cd ../backend
 mvn spring-boot:run -pl app -am -Dspring-boot.run.profiles=local
 ```
 
-O perfil `local` aponta, por padrão, para `mongodb://localhost:27017` com as
-credenciais sintéticas de `infrastructure/.env.example` (ver
-`application-local.yml`); sobrescreva com `SPRING_DATA_MONGODB_URI` se necessário.
+O perfil `local` aponta, por padrão, para `mongodb://localhost:27017` e
+`localhost:9092` (Kafka), com as credenciais sintéticas de
+`infrastructure/.env.example` (ver `application-local.yml`); sobrescreva com
+`SPRING_DATA_MONGODB_URI`/`SPRING_KAFKA_BOOTSTRAP_SERVERS` se necessário.
 
 A aplicação sobe em `http://localhost:8080`, com:
 
@@ -69,6 +72,8 @@ A aplicação sobe em `http://localhost:8080`, com:
 - Documentação OpenAPI: `GET /v3/api-docs`
 - Swagger UI: `GET /swagger-ui.html`
 - Autenticação: `POST /api/v1/auth/login`, `/refresh`, `/logout` (ver abaixo)
+- Ingestão de eventos: `POST /api/v1/events` (autenticado — ver "Ingestão e
+  Normalização de Eventos" abaixo)
 
 ## Autenticação e Autorização (Fase 2)
 
@@ -165,6 +170,43 @@ As demais coleções previstas no produto completo (`security_events`, `alerts`,
 forem implementados (ver tabela de fases em ADR-012), reaplicando o mesmo padrão de
 adaptador.
 
+## Ingestão e Normalização de Eventos (Fase 4)
+
+`eventingestion` recebe eventos sintéticos brutos, valida os campos obrigatórios e
+publica em `security.raw-events`. `eventnormalization` consome esse tópico, transforma
+o IP de origem em hash SHA-256 (nunca fica em texto puro em nenhum tópico/coleção a
+partir daí), atribui uma classificação de dados provisória (`INTERNAL`, até o módulo
+`dataprotection` da Fase 9 assumir essa responsabilidade), persiste de forma idempotente
+na coleção `security_events` e publica em `security.normalized-events`. Mensagens que
+falham a normalização (campo obrigatório ausente, JSON inválido) vão para
+`security.dead-letter`. Ver [ADR-013](../docs/adr/ADR-013-pipeline-ingestao-normalizacao.md)
+para o desenho completo.
+
+### Fluxo de exemplo (curl)
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/events \
+  -H "Content-Type: application/json" -H "Authorization: Bearer <accessToken>" \
+  -d '{
+    "eventType": "authentication.login.failure",
+    "source": "identity-service",
+    "actorUserId": "synthetic-user-01",
+    "actorRole": "EMPLOYEE",
+    "targetResourceType": "account",
+    "targetResourceId": "synthetic-account-01",
+    "action": "LOGIN",
+    "outcome": "FAILURE",
+    "deviceId": "synthetic-device-01",
+    "deviceKnown": false,
+    "sourceIp": "203.0.113.10"
+  }'
+# => 202 Accepted, corpo: {"eventId": "...", "correlationId": "..."}
+```
+
+`eventId`, `eventVersion`, `timestamp` e `correlationId` são opcionais — valores padrão
+são gerados quando ausentes. Campos obrigatórios ausentes retornam `400 Bad Request`
+com a lista de violações.
+
 ## Build e Testes
 
 ```bash
@@ -174,11 +216,13 @@ mvn verify
 
 Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`) e executa os
 testes JUnit 5/Mockito/AssertJ de cada módulo: domínio, aplicação, infraestrutura, os
-testes de persistência MongoDB via Testcontainers (`identity`, `audit`) e os testes de
-integração de autenticação/RBAC no módulo `app` (também via Testcontainers, ver
+testes de persistência MongoDB via Testcontainers (`identity`, `audit`,
+`eventnormalization`), os testes do pipeline de eventos via Kafka+MongoDB reais
+(`eventingestion`, `eventnormalization`) e os testes de integração de
+autenticação/RBAC/ingestão no módulo `app` (também via Testcontainers, ver
 `AbstractIntegrationTest`). **Docker precisa estar em execução** para os testes de
-Testcontainers; sem Docker disponível, use `mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest' -DfailIfNoTests=false -pl '!app'`
-para rodar apenas os testes que não dependem de um MongoDB real.
+Testcontainers; sem Docker disponível, use `mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest,!*IntegrationTest' -DfailIfNoTests=false -pl '!app'`
+para rodar apenas os testes que não dependem de MongoDB/Kafka reais.
 
 O build empacota o artefato executável em `app/target/coopshield-soc.jar`.
 
@@ -186,11 +230,8 @@ O build empacota o artefato executável em `app/target/coopshield-soc.jar`.
 
 | Perfil | Uso |
 |--------|-----|
-| `local` | Execução local fora de container, logs em nível DEBUG para o pacote do projeto, MongoDB em `localhost:27017` |
-| `docker` | Execução via Docker Compose, logs em nível INFO, MongoDB via `SPRING_DATA_MONGODB_URI` injetada pelo Compose |
-
-Perfis/configuração adicionais para Kafka serão introduzidos na Fase 4, conforme o
-[Roadmap](../docs/roadmap.md).
+| `local` | Execução local fora de container, logs em nível DEBUG para o pacote do projeto, MongoDB em `localhost:27017`, Kafka em `localhost:9092` |
+| `docker` | Execução via Docker Compose, logs em nível INFO, MongoDB/Kafka via `SPRING_DATA_MONGODB_URI`/`SPRING_KAFKA_BOOTSTRAP_SERVERS` injetadas pelo Compose |
 
 ## Imagem Docker
 
@@ -204,10 +245,13 @@ com usuário não privilegiado e expõe um `HEALTHCHECK` sobre `/actuator/health
 
 ## Limitações desta Fase
 
-- Sem endpoints de negócio de domínio ainda (eventos, alertas, incidentes) — chegam
-  nas Fases 4 a 9. Autenticação e RBAC já são reais desde a Fase 2 (ver acima).
-- Sem Kafka configurado no backend ainda — chega na Fase 4. MongoDB (usuários, refresh
-  tokens, auditoria) já é real desde a Fase 3 (ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)).
+- Sem detecção, risco, alertas, incidentes, playbooks, proteção de dados completa ou
+  simulador ainda — chegam nas Fases 5 a 9. Autenticação/RBAC (Fase 2), persistência
+  MongoDB (Fase 3) e o pipeline de ingestão/normalização de eventos via Kafka (Fase 4)
+  já são reais (ver acima).
+- `dataClassification` dos eventos normalizados é um valor provisório (`INTERNAL`) até
+  o módulo `dataprotection` (Fase 9) assumir essa responsabilidade de verdade — ver
+  [ADR-013](../docs/adr/ADR-013-pipeline-ingestao-normalizacao.md).
 - Sem política de arquivamento/expurgo formal para `audit_logs` além do TTL nativo já
   aplicado a `refresh_tokens` — retenção é indefinida no MVP (ver
   [Riscos Técnicos](../docs/architecture/technical-risks.md)).

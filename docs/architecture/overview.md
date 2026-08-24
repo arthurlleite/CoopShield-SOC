@@ -135,8 +135,8 @@ sequenceDiagram
 |--------|--------------------|
 | `identity` | Autenticação, usuários, refresh tokens, política de senha e bloqueio |
 | `accesscontrol` | Autorização por perfil (RBAC), verificação de permissões nos demais módulos |
-| `eventingestion` | Recepção e validação inicial de eventos brutos (API/Kafka) |
-| `eventnormalization` | Normalização de eventos para o modelo comum |
+| `eventingestion` | Recepção e validação inicial de eventos brutos (API/Kafka) — real desde a Fase 4 |
+| `eventnormalization` | Normalização de eventos para o modelo comum — real desde a Fase 4 |
 | `dataprotection` | Classificação, tokenização, mascaramento e controle de destokenização |
 | `detection` | Carregamento de regras YAML e avaliação contra eventos normalizados |
 | `risk` | Cálculo de pontuação de risco explicável |
