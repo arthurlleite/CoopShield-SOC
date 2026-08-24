@@ -9,6 +9,10 @@ spring:
       # sinteticas de uso local, iguais ao padrao de infrastructure/.env.example;
       # sobrescreva via SPRING_DATA_MONGODB_URI se necessario.
       uri: mongodb://coopshield-local:change-me-local-only@localhost:27017/coopshield?authSource=admin
+  kafka:
+    # Aponta para o Kafka do docker-compose, rodado isoladamente com
+    # `docker compose up mongodb kafka`.
+    bootstrap-servers: localhost:9092
 
 logging:
   level:

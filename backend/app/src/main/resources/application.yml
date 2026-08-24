@@ -1,6 +1,19 @@
 spring:
   application:
     name: coopshield-soc
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # earliest: um consumer group novo (ex.: apos redeploy local) le desde o
+      # inicio do topico em vez de perder eventos publicados antes dele existir.
+      # Seguro porque a idempotencia do pipeline vem do indice unico em
+      # security_events.eventId, nao do commit de offset - ver
+      # docs/adr/ADR-013-pipeline-ingestao-normalizacao.md.
+      auto-offset-reset: earliest
 
 management:
   endpoint:
