@@ -1,0 +1,26 @@
+id: RULE-004
+name: "Viagem impossível (dados sintéticos)"
+description: >
+  Detecta dois logins bem-sucedidos do mesmo ator, em regiões sintéticas
+  diferentes, dentro de uma janela de tempo incompatível com deslocamento real.
+enabled: true
+eventTypes:
+  - authentication.login.success
+evaluatorType: impossible-travel
+conditions: {}
+aggregationWindow: "PT15M"
+threshold: 1
+severity: HIGH
+baseRiskScore: 45
+mitreTactic: "Initial Access"
+mitreTechnique: "T1078 - Valid Accounts"
+recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
+version: "1.0.0"
+falsePositiveNotes: >
+  VPNs corporativas ou proxies sintéticos podem alterar a região observada sem
+  indicar comprometimento; validar contra a unidade do ator.
+references:
+  - "https://attack.mitre.org/techniques/T1078/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

@@ -1,0 +1,31 @@
+id: RULE-013
+name: "Acesso por conta privilegiada fora da linha de base"
+description: >
+  Detecta uma conta privilegiada (IT_ADMIN, BRANCH_MANAGER ou SOC_MANAGER)
+  realizando uma consulta ou exportação sinalizada como fora do padrão
+  esperado para o seu perfil.
+enabled: true
+eventTypes:
+  - data.access.query
+  - data.access.export
+evaluatorType: single-event-flag
+conditions:
+  metadataKey: outOfPattern
+  metadataEquals: "true"
+  privilegedRolesIn: "IT_ADMIN,BRANCH_MANAGER,SOC_MANAGER"
+aggregationWindow: "PT1M"
+threshold: 1
+severity: HIGH
+baseRiskScore: 50
+mitreTactic: "Privilege Escalation"
+mitreTechnique: "T1078.003 - Local Accounts"
+recommendedPlaybook: "playbook-abuso-de-privilegio"
+version: "1.0.0"
+falsePositiveNotes: >
+  Investigações legítimas conduzidas por perfis privilegiados podem gerar este
+  sinal; validar justificativa registrada em auditoria antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1078/003/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

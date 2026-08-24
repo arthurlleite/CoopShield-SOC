@@ -1,0 +1,28 @@
+id: RULE-011
+name: "Aumento anormal de respostas HTTP 401"
+description: >
+  Detecta um pico de respostas HTTP 401 (não autenticado) em endpoints
+  monitorados, para o mesmo ator, dentro de uma janela curta.
+enabled: true
+eventTypes:
+  - api.response.error
+evaluatorType: threshold-count
+conditions:
+  metadataKey: httpStatus
+  metadataEquals: "401"
+aggregationWindow: "PT5M"
+threshold: 4
+severity: MEDIUM
+baseRiskScore: 30
+mitreTactic: "Credential Access"
+mitreTechnique: "T1110 - Brute Force"
+recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
+version: "1.0.0"
+falsePositiveNotes: >
+  Um token de acesso expirado em uma integração legítima pode gerar picos de
+  401; validar se o padrão de endpoints tentados é consistente com brute force.
+references:
+  - "https://attack.mitre.org/techniques/T1110/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

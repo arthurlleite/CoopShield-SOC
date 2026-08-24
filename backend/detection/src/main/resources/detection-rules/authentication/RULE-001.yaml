@@ -1,0 +1,29 @@
+id: RULE-001
+name: "Múltiplas falhas de login seguidas de sucesso"
+description: >
+  Detecta uma sequência de falhas de autenticação seguida de um login bem-sucedido
+  para o mesmo ator, dentro de uma janela curta de tempo.
+enabled: true
+eventTypes:
+  - authentication.login.failure
+  - authentication.login.success
+evaluatorType: failure-then-success
+conditions:
+  failureEventType: authentication.login.failure
+  successEventType: authentication.login.success
+aggregationWindow: "PT10M"
+threshold: 4
+severity: HIGH
+baseRiskScore: 60
+mitreTactic: "Credential Access"
+mitreTechnique: "T1110 - Brute Force"
+recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
+version: "1.0.0"
+falsePositiveNotes: >
+  Usuários que esquecem a senha ocasionalmente podem gerar falso positivo; validar
+  dispositivo e horário antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1110/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

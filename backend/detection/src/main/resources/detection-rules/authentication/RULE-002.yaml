@@ -1,0 +1,28 @@
+id: RULE-002
+name: "Autenticação em horário atípico"
+description: >
+  Detecta um login bem-sucedido fora do horário comercial habitual, com base no
+  indicador sintético de hora do dia carregado no evento.
+enabled: true
+eventTypes:
+  - authentication.login.success
+evaluatorType: atypical-hour
+conditions:
+  businessHourStart: "07"
+  businessHourEnd: "20"
+aggregationWindow: "PT1M"
+threshold: 1
+severity: MEDIUM
+baseRiskScore: 25
+mitreTactic: "Initial Access"
+mitreTechnique: "T1078 - Valid Accounts"
+recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
+version: "1.0.0"
+falsePositiveNotes: >
+  Colaboradores em plantão ou fuso horário diferente podem gerar falso positivo;
+  cruzar com a unidade sintética do ator antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1078/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

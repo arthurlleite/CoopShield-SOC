@@ -1,0 +1,26 @@
+id: RULE-008
+name: "Exportação atípica de dados"
+description: >
+  Detecta duas ou mais exportações de dados fictícios do mesmo ator dentro de
+  uma janela curta - possível exfiltração em lote.
+enabled: true
+eventTypes:
+  - data.access.export
+evaluatorType: threshold-count
+conditions: {}
+aggregationWindow: "PT10M"
+threshold: 2
+severity: HIGH
+baseRiskScore: 45
+mitreTactic: "Exfiltration"
+mitreTechnique: "T1567 - Exfiltration Over Web Service"
+recommendedPlaybook: "playbook-exportacao-anormal"
+version: "1.0.0"
+falsePositiveNotes: >
+  Exportações programadas para relatórios legítimos podem gerar este sinal;
+  cruzar com o calendário de relatórios da unidade antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1567/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

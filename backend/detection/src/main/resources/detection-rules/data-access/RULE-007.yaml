@@ -1,0 +1,26 @@
+id: RULE-007
+name: "Consulta massiva de clientes"
+description: >
+  Detecta um volume de consultas a registros fictícios de cliente/cooperado
+  muito acima do padrão normal, dentro de uma janela curta.
+enabled: true
+eventTypes:
+  - data.access.query
+evaluatorType: threshold-count
+conditions: {}
+aggregationWindow: "PT5M"
+threshold: 15
+severity: HIGH
+baseRiskScore: 40
+mitreTactic: "Collection"
+mitreTechnique: "T1530 - Data from Cloud Storage"
+recommendedPlaybook: "playbook-exportacao-anormal"
+version: "1.0.0"
+falsePositiveNotes: >
+  Rotinas em lote legítimas (ex.: conciliação noturna) podem gerar este volume;
+  validar se o ator e o horário são consistentes com uma rotina automatizada.
+references:
+  - "https://attack.mitre.org/techniques/T1530/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

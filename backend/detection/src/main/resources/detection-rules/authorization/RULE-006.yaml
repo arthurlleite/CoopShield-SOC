@@ -1,0 +1,26 @@
+id: RULE-006
+name: "Múltiplas falhas de autorização"
+description: >
+  Detecta três ou mais tentativas de acesso negadas do mesmo ator dentro de uma
+  janela curta - possível varredura de permissões.
+enabled: true
+eventTypes:
+  - authorization.access.denied
+evaluatorType: threshold-count
+conditions: {}
+aggregationWindow: "PT10M"
+threshold: 3
+severity: MEDIUM
+baseRiskScore: 25
+mitreTactic: "Discovery"
+mitreTechnique: "T1069 - Permission Groups Discovery"
+recommendedPlaybook: "playbook-abuso-de-privilegio"
+version: "1.0.0"
+falsePositiveNotes: >
+  Integrações mal configuradas podem gerar negações repetidas; validar se o
+  padrão de recursos tentados é consistente com reconhecimento deliberado.
+references:
+  - "https://attack.mitre.org/techniques/T1069/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

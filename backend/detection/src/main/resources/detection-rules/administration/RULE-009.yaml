@@ -1,0 +1,31 @@
+id: RULE-009
+name: "Alteração administrativa seguida de acesso sensível"
+description: >
+  Detecta um acesso a dado (consulta, exportação ou exposição sensível) do mesmo
+  ator logo após uma alteração administrativa (permissão ou conta) - possível
+  elevação de privilégio seguida de abuso imediato.
+enabled: true
+eventTypes:
+  - data.access.query
+  - data.access.export
+  - data.access.sensitive.exposure
+evaluatorType: sequence-two-types
+conditions:
+  firstEventTypes: "admin.permission.changed,admin.account.created,admin.account.disabled"
+aggregationWindow: "PT15M"
+threshold: 1
+severity: CRITICAL
+baseRiskScore: 70
+mitreTactic: "Persistence"
+mitreTechnique: "T1098 - Account Manipulation"
+recommendedPlaybook: "playbook-abuso-de-privilegio"
+version: "1.0.0"
+falsePositiveNotes: >
+  Administradores de TI legítimos frequentemente ajustam permissão e, em
+  seguida, validam o acesso resultante; cruzar com aprovação de mudança antes
+  de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1098/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

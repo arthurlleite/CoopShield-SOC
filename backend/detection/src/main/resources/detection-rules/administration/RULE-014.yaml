@@ -1,0 +1,28 @@
+id: RULE-014
+name: "Sequência de ações administrativas incomuns"
+description: >
+  Detecta duas ou mais ações administrativas (alteração de permissão, criação
+  ou desativação de conta) do mesmo ator dentro de uma janela curta.
+enabled: true
+eventTypes:
+  - admin.permission.changed
+  - admin.account.created
+  - admin.account.disabled
+evaluatorType: threshold-count
+conditions: {}
+aggregationWindow: "PT10M"
+threshold: 2
+severity: HIGH
+baseRiskScore: 45
+mitreTactic: "Persistence"
+mitreTechnique: "T1098 - Account Manipulation"
+recommendedPlaybook: "playbook-abuso-de-privilegio"
+version: "1.0.0"
+falsePositiveNotes: >
+  Rotinas de provisionamento em lote legítimas podem gerar múltiplas ações
+  administrativas seguidas; validar contra o chamado de mudança associado.
+references:
+  - "https://attack.mitre.org/techniques/T1098/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

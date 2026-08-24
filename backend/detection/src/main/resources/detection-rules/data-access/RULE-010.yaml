@@ -1,0 +1,26 @@
+id: RULE-010
+name: "Envio de dado sensível em texto puro"
+description: >
+  Detecta um evento em que um dado classificado como sensível foi identificado
+  em texto puro - violação direta de política de proteção de dados.
+enabled: true
+eventTypes:
+  - data.access.sensitive.exposure
+evaluatorType: single-event-flag
+conditions: {}
+aggregationWindow: "PT1M"
+threshold: 1
+severity: CRITICAL
+baseRiskScore: 80
+mitreTactic: "Credential Access"
+mitreTechnique: "T1552 - Unsecured Credentials"
+recommendedPlaybook: "playbook-vazamento-de-dado"
+version: "1.0.0"
+falsePositiveNotes: >
+  Este sinal não deveria ter falsos positivos em condições normais: qualquer
+  ocorrência merece revisão imediata pela proteção de dados.
+references:
+  - "https://attack.mitre.org/techniques/T1552/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

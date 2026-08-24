@@ -1,0 +1,29 @@
+id: RULE-015
+name: "Múltiplas contas acessadas pelo mesmo dispositivo incomum"
+description: >
+  Detecta três ou mais atores distintos autenticando a partir do mesmo
+  dispositivo sintético dentro de uma janela curta - indício de dispositivo
+  compartilhado indevidamente ou de credenciais comprometidas em lote.
+enabled: true
+eventTypes:
+  - authentication.login.success
+  - authentication.login.failure
+evaluatorType: same-device-multiple-accounts
+conditions:
+  aggregationKey: device
+aggregationWindow: "PT15M"
+threshold: 3
+severity: CRITICAL
+baseRiskScore: 65
+mitreTactic: "Initial Access"
+mitreTechnique: "T1078 - Valid Accounts"
+recommendedPlaybook: "playbook-conta-possivelmente-comprometida"
+version: "1.0.0"
+falsePositiveNotes: >
+  Dispositivos de uso compartilhado legítimo (ex.: terminal de agência) podem
+  gerar este sinal; cruzar com o cadastro de dispositivos antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1078/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

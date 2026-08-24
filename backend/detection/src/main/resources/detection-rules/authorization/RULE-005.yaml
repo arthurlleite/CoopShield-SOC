@@ -1,0 +1,26 @@
+id: RULE-005
+name: "Acesso a endpoint fora do perfil"
+description: >
+  Detecta uma tentativa de acesso negada a um recurso fora do perfil de
+  autorização do ator.
+enabled: true
+eventTypes:
+  - authorization.access.denied
+evaluatorType: single-event-flag
+conditions: {}
+aggregationWindow: "PT1M"
+threshold: 1
+severity: HIGH
+baseRiskScore: 35
+mitreTactic: "Privilege Escalation"
+mitreTechnique: "T1078.004 - Cloud Accounts"
+recommendedPlaybook: "playbook-abuso-de-privilegio"
+version: "1.0.0"
+falsePositiveNotes: >
+  Erros de configuração de rota podem gerar negações legítimas; validar se o
+  ator tentou repetidamente antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1078/004/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"

@@ -1,0 +1,26 @@
+id: RULE-003
+name: "Autenticação em dispositivo desconhecido"
+description: >
+  Detecta o reconhecimento de um dispositivo não presente na linha de base do
+  ator durante uma tentativa de autenticação.
+enabled: true
+eventTypes:
+  - device.unrecognized
+evaluatorType: single-event-flag
+conditions: {}
+aggregationWindow: "PT1M"
+threshold: 1
+severity: MEDIUM
+baseRiskScore: 20
+mitreTactic: "Initial Access"
+mitreTechnique: "T1078 - Valid Accounts"
+recommendedPlaybook: "playbook-dispositivo-desconhecido"
+version: "1.0.0"
+falsePositiveNotes: >
+  Troca legítima de dispositivo (novo aparelho, reinstalação) gera o mesmo sinal;
+  cruzar com o resultado da autenticação antes de escalar.
+references:
+  - "https://attack.mitre.org/techniques/T1078/"
+author: "CoopShield SOC"
+createdAt: "2026-08-24"
+updatedAt: "2026-08-24"
