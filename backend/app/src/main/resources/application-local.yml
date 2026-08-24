@@ -1,6 +1,15 @@
 server:
   port: 8080
 
+spring:
+  data:
+    mongodb:
+      # Aponta para o MongoDB do docker-compose (infrastructure/docker-compose.yml),
+      # rodado isoladamente com `docker compose up mongodb`. Credenciais
+      # sinteticas de uso local, iguais ao padrao de infrastructure/.env.example;
+      # sobrescreva via SPRING_DATA_MONGODB_URI se necessario.
+      uri: mongodb://coopshield-local:change-me-local-only@localhost:27017/coopshield?authSource=admin
+
 logging:
   level:
     root: INFO

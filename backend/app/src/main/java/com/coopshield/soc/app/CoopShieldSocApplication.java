@@ -2,6 +2,7 @@ package com.coopshield.soc.app;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 /**
  * Ponto de entrada do monolito modular CoopShield SOC.
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * eventos, transacoes e incidentes processados sao sinteticos.
  */
 @SpringBootApplication(scanBasePackages = "com.coopshield.soc")
+@EnableMongoRepositories(basePackages = "com.coopshield.soc")
 public class CoopShieldSocApplication {
 
     public static void main(String[] args) {
