@@ -164,8 +164,14 @@ sequenceDiagram
 
 ## 7. Modelo de Dados (visão conceitual)
 
-O modelo de dados completo (schemas, índices, TTLs) pertence à Fase 3. Nesta fase, o
-modelo conceitual de alto nível é:
+O modelo de dados é construído incrementalmente: cada fase cria as coleções, índices e
+estratégias de retenção do(s) módulo(s) de domínio que ela implementa, seguindo o
+padrão de adaptador MongoDB estabelecido na Fase 3
+([ADR-012](../adr/ADR-012-mongodb-real-fase-3.md)). Na Fase 3, as coleções `users`,
+`refresh_tokens` (módulo `identity`) e `audit_logs` (módulo `audit`) já existem e são
+reais; as demais aparecem no diagrama conceitual abaixo mas só passam a existir como
+coleções MongoDB quando seus módulos donos forem implementados (ver tabela de fases em
+ADR-012).
 
 ```mermaid
 erDiagram

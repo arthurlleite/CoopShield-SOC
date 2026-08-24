@@ -25,6 +25,11 @@
   por regras, com interfaces preparadas para uma futura integração.
 - Sem múltiplos microsserviços no MVP — arquitetura de monólito modular (ver
   [ADR-001](../adr/ADR-001-monolito-modular.md)).
+- Sem política formal de arquivamento/expurgo para `audit_logs` além do TTL nativo já
+  aplicado a `refresh_tokens` — a trilha de auditoria é retida indefinidamente durante a
+  vida do ambiente de demonstração; uma instituição real exigiria uma política de
+  retenção regulatória explícita, fora do escopo deste MVP educacional (ver
+  [ADR-012](../adr/ADR-012-mongodb-real-fase-3.md)).
 
 Essas limitações são intencionais e documentadas como roadmap; não representam tarefas
 incompletas de nenhuma fase específica.

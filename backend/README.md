@@ -31,22 +31,37 @@ backend/
 
 Cada módulo de domínio segue arquitetura hexagonal internamente
 (`domain` / `application` / `infrastructure`). Além de `sharedkernel`, os módulos
-`identity`, `accesscontrol` e `audit` já possuem lógica real (autenticação, RBAC e
-trilha de auditoria — ver seção "Autenticação e Autorização" abaixo); os demais
-módulos ainda têm apenas o esqueleto de pacotes documentado, pronto para receber a
-implementação funcional das fases seguintes (ver [docs/roadmap.md](../docs/roadmap.md)).
+`identity`, `accesscontrol` e `audit` já possuem lógica real (autenticação, RBAC,
+persistência em MongoDB e trilha de auditoria — ver seções "Autenticação e Autorização"
+e "Persistência" abaixo); os demais módulos ainda têm apenas o esqueleto de pacotes
+documentado, pronto para receber a implementação funcional das fases seguintes (ver
+[docs/roadmap.md](../docs/roadmap.md)).
 
 ## Pré-requisitos
 
 - Java 21 (testado com Eclipse Temurin 21.0.12).
 - Maven 3.9+ (ou utilize o wrapper, quando disponível).
+- Docker (necessário para o MongoDB local via Docker Compose e para os testes de
+  integração com Testcontainers — ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)).
 
 ## Executar Localmente
 
+O backend precisa de um MongoDB acessível para subir (o seeder de usuários sintéticos
+grava no banco na inicialização). Suba apenas o MongoDB do Docker Compose antes do
+backend:
+
 ```bash
-cd backend
+cd infrastructure
+cp .env.example .env   # apenas na primeira vez
+docker compose up -d mongodb
+
+cd ../backend
 mvn spring-boot:run -pl app -am -Dspring-boot.run.profiles=local
 ```
+
+O perfil `local` aponta, por padrão, para `mongodb://localhost:27017` com as
+credenciais sintéticas de `infrastructure/.env.example` (ver
+`application-local.yml`); sobrescreva com `SPRING_DATA_MONGODB_URI` se necessário.
 
 A aplicação sobe em `http://localhost:8080`, com:
 
@@ -60,8 +75,12 @@ A aplicação sobe em `http://localhost:8080`, com:
 O backend expõe autenticação por JWT de curta duração + refresh token opaco
 rotacionado a cada uso, com bloqueio temporário após tentativas repetidas e
 autorização por perfil (RBAC), conforme
-[docs/architecture/roles-permissions.md](../docs/architecture/roles-permissions.md) e
-[ADR-011](../docs/adr/ADR-011-persistencia-em-memoria-fase-2.md).
+[docs/architecture/roles-permissions.md](../docs/architecture/roles-permissions.md).
+A persistência de usuários, refresh tokens e auditoria é real em MongoDB desde a
+Fase 3 (ver seção "Persistência" abaixo e [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md));
+o desenho original de autenticação/RBAC foi provado com adaptadores em memória na
+Fase 2 ([ADR-011](../docs/adr/ADR-011-persistencia-em-memoria-fase-2.md)), sem alterar
+domínio ou casos de uso ao trocar o adaptador.
 
 ### Usuários sintéticos (semeados na inicialização)
 
@@ -128,6 +147,24 @@ perfil) e 404 (autorizado, mas sem endpoint ainda).
 | `coopshield.security.lockout.lockout-duration` | `PT15M` | Duração do bloqueio temporário |
 | `coopshield.security.lockout.refresh-token-ttl` | `P7D` | Duração do refresh token |
 
+## Persistência (Fase 3)
+
+Os módulos `identity` e `audit` persistem em MongoDB real através de adaptadores que
+implementam as portas de aplicação já existentes desde a Fase 2, sem alterar domínio ou
+casos de uso (ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)):
+
+| Coleção | Módulo | Índices |
+|---|---|---|
+| `users` | `identity` | `username` (único) |
+| `refresh_tokens` | `identity` | `userId`; `expiresAt` (TTL — expurgo automático de tokens expirados) |
+| `audit_logs` | `audit` | `eventType`, `actor`, `timestamp` (sem TTL — retenção indefinida no MVP) |
+
+As demais coleções previstas no produto completo (`security_events`, `alerts`,
+`incidents`, `detection_rules`, `playbooks`, `protected_data`, `user_baselines`,
+`devices`, `simulation_runs`) serão criadas nas fases em que seus módulos de domínio
+forem implementados (ver tabela de fases em ADR-012), reaplicando o mesmo padrão de
+adaptador.
+
 ## Build e Testes
 
 ```bash
@@ -135,20 +172,25 @@ cd backend
 mvn verify
 ```
 
-Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`), executa os
-testes JUnit 5/Mockito de cada módulo (domínio, aplicação, infraestrutura e os testes
-de integração de autenticação/RBAC no módulo `app`) e empacota o artefato executável
-em `app/target/coopshield-soc.jar`.
+Isso compila todos os 16 módulos (14 de domínio + `sharedkernel` + `app`) e executa os
+testes JUnit 5/Mockito/AssertJ de cada módulo: domínio, aplicação, infraestrutura, os
+testes de persistência MongoDB via Testcontainers (`identity`, `audit`) e os testes de
+integração de autenticação/RBAC no módulo `app` (também via Testcontainers, ver
+`AbstractIntegrationTest`). **Docker precisa estar em execução** para os testes de
+Testcontainers; sem Docker disponível, use `mvn verify -Dtest='!*MongoUserRepositoryTest,!*MongoAuditLogTest,!*MongoRefreshTokenRepositoryTest' -DfailIfNoTests=false -pl '!app'`
+para rodar apenas os testes que não dependem de um MongoDB real.
+
+O build empacota o artefato executável em `app/target/coopshield-soc.jar`.
 
 ## Perfis
 
 | Perfil | Uso |
 |--------|-----|
-| `local` | Execução local fora de container, logs em nível DEBUG para o pacote do projeto |
-| `docker` | Execução via Docker Compose, logs em nível INFO |
+| `local` | Execução local fora de container, logs em nível DEBUG para o pacote do projeto, MongoDB em `localhost:27017` |
+| `docker` | Execução via Docker Compose, logs em nível INFO, MongoDB via `SPRING_DATA_MONGODB_URI` injetada pelo Compose |
 
-Perfis adicionais (com configuração de MongoDB e Kafka) serão introduzidos nas Fases 3
-e 4, conforme o [Roadmap](../docs/roadmap.md).
+Perfis/configuração adicionais para Kafka serão introduzidos na Fase 4, conforme o
+[Roadmap](../docs/roadmap.md).
 
 ## Imagem Docker
 
@@ -164,8 +206,8 @@ com usuário não privilegiado e expõe um `HEALTHCHECK` sobre `/actuator/health
 
 - Sem endpoints de negócio de domínio ainda (eventos, alertas, incidentes) — chegam
   nas Fases 4 a 9. Autenticação e RBAC já são reais desde a Fase 2 (ver acima).
-- Sem MongoDB/Kafka configurados no backend ainda — chegam nas Fases 3 e 4. Usuários,
-  refresh tokens e auditoria são mantidos em memória até lá (ver
-  [ADR-011](../docs/adr/ADR-011-persistencia-em-memoria-fase-2.md)).
-- `mvn verify` não inclui testes de integração com Testcontainers ainda (não há
-  infraestrutura de dados para testar nesta fase).
+- Sem Kafka configurado no backend ainda — chega na Fase 4. MongoDB (usuários, refresh
+  tokens, auditoria) já é real desde a Fase 3 (ver [ADR-012](../docs/adr/ADR-012-mongodb-real-fase-3.md)).
+- Sem política de arquivamento/expurgo formal para `audit_logs` além do TTL nativo já
+  aplicado a `refresh_tokens` — retenção é indefinida no MVP (ver
+  [Riscos Técnicos](../docs/architecture/technical-risks.md)).
